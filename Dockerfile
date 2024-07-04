@@ -1,11 +1,16 @@
-FROM debian:%%DEBIAN_VERSION%%-slim
+#
+# NOTE: THIS DOCKERFILE IS GENERATED VIA "update.sh"
+#
+# PLEASE DO NOT EDIT IT DIRECTLY.
+#
+FROM debian:bookworm-slim
 
 LABEL maintainer="NGINX Docker Maintainers <docker-maint@nginx.com>"
 
-ENV NGINX_VERSION   %%NGINX_VERSION%%
-ENV NJS_VERSION     %%NJS_VERSION%%
-ENV NJS_RELEASE     %%NJS_RELEASE%%
-ENV PKG_RELEASE     %%PKG_RELEASE%%
+ENV NGINX_VERSION   1.26.1
+ENV NJS_VERSION     0.8.4
+ENV NJS_RELEASE     2~bookworm
+ENV PKG_RELEASE     2~bookworm
 
 RUN set -x \
 # create nginx user/group first, to be consistent throughout docker variants
@@ -32,18 +37,23 @@ RUN set -x \
     rm -rf "$GNUPGHOME"; \
     apt-get remove --purge --auto-remove -y gnupg1 && rm -rf /var/lib/apt/lists/* \
     && dpkgArch="$(dpkg --print-architecture)" \
-    && nginxPackages="%%PACKAGES%%
+    && nginxPackages=" \
+        nginx=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-xslt=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-geoip=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-image-filter=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-njs=${NGINX_VERSION}+${NJS_VERSION}-${NJS_RELEASE} \
     " \
     && case "$dpkgArch" in \
         amd64|arm64) \
 # arches officialy built by upstream
-            echo "deb [signed-by=$NGINX_GPGKEY_PATH] %%PACKAGEREPO%% %%DEBIAN_VERSION%% nginx" >> /etc/apt/sources.list.d/nginx.list \
+            echo "deb [signed-by=$NGINX_GPGKEY_PATH] https://nginx.org/packages/debian/ bookworm nginx" >> /etc/apt/sources.list.d/nginx.list \
             && apt-get update \
             ;; \
         *) \
 # we're on an architecture upstream doesn't officially build for
 # let's build binaries from the published source packages
-            echo "deb-src [signed-by=$NGINX_GPGKEY_PATH] %%PACKAGEREPO%% %%DEBIAN_VERSION%% nginx" >> /etc/apt/sources.list.d/nginx.list \
+            echo "deb-src [signed-by=$NGINX_GPGKEY_PATH] https://nginx.org/packages/debian/ bookworm nginx" >> /etc/apt/sources.list.d/nginx.list \
             \
 # new directory for storing sources and .deb files
             && tempDir="$(mktemp -d)" \
@@ -55,11 +65,11 @@ RUN set -x \
             \
 # build .deb files from upstream's source packages (which are verified by apt-get)
             && apt-get update \
-            && apt-get build-dep -y %%BUILDTARGET%% \
+            && apt-get build-dep -y $nginxPackages \
             && ( \
                 cd "$tempDir" \
                 && DEB_BUILD_OPTIONS="nocheck parallel=$(nproc)" \
-                    apt-get source --compile %%BUILDTARGET%% \
+                    apt-get source --compile $nginxPackages \
             ) \
 # we don't remove APT lists here because they get re-downloaded and removed later
             \
