@@ -1,0 +1,23 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: |
+           docker build -t registry.cn-hangzhou.aliyuncs.com/24php/nginx:1 .
+           docker login --username=2354487607@qq.com --password=dockermima0.0 registry.cn-hangzhou.aliyuncs.com
+           docker image ls
+           docker push registry.cn-hangzhou.aliyuncs.com/24php/nginx:1
+      
